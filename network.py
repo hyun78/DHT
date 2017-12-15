@@ -5,12 +5,13 @@ logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
 
 NETWORK_MAGIC_VALUE= "Sound body, sound code."
 NETWORK_PORT = 19999
-NETWORK_LISTEN_ADDR = "0.0.0.0" #or 127.0.0.1
+NETWORK_LISTEN_ADDR = "0.0.0.0" #or 127.0.0.1 / 0.0.0.0
+#NETWORK_LISTEN_ADDR = "127.0.0.1" #or 127.0.0.1 / 0.0.0.0
 NETWORK_UDP_MTU = 1024
 NETWORK_BROADCAST_ADDR = "255.255.255.255"
 EMULATE_BROADCAST = True
+#EMULATE_ADDR = "127.0.0.1"
 EMULATE_ADDR = "10.0.0.{num}"
-
 
 class Network:
     class UDPListener(asyncio.DatagramProtocol):
@@ -18,6 +19,7 @@ class Network:
             self._network = network
 
         def datagram_received(self, data, addr):
+            
             logging.debug("Packet received from {addr}, length {len}".format(addr=addr, len=len(data)))
             try:
                 s = data.decode(encoding="utf-8", errors="strict")
@@ -37,12 +39,17 @@ class Network:
 
     def __init__(self, loop: asyncio.AbstractEventLoop):
         self._loop = loop
+        # socket = loop.create_datagram_endpoint(
+        #     lambda: self.UDPListener(self), local_addr=(NETWORK_LISTEN_ADDR, NETWORK_PORT)
+            
+        # )
         socket = loop.create_datagram_endpoint(
             lambda: self.UDPListener(self), local_addr=(NETWORK_LISTEN_ADDR, NETWORK_PORT),
             reuse_address=True, allow_broadcast=True,
         )
 
         (self._socket, _) = loop.run_until_complete(socket)
+ 
 
     def send_message(self, message, addr):
         if not "_magic" in message:

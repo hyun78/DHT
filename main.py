@@ -8,9 +8,10 @@ def main():
     loop = asyncio.new_event_loop()
 
     dht.DHT(loop)
-
+    
     try:
         loop.run_forever()
+        
     finally:
         loop.close()
     pass

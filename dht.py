@@ -14,37 +14,48 @@ _MARGIN = 2
 _REPEAT = _MARGIN * (_LONG / _SHORT)
 
 
-class DHT(network.Network, timer.Timer):
+class DHT(network.Network, timer.Timer): #상속 받음 
     class State(Enum):
         START = 1
         MASTER = 2
         SLAVE = 3
+    def key_insertion(self,key,value):
+        hashval = hashfunc(key)
+        try :
+            table[hashval][key] = value
+        except:
+            table[hashval]= {}
+            table[hashval][key] = value
+        pass
+    def key_deletion(self):
+
+        pass
 
     def update_peer_list(self):
 
-        for (_, timer) in self._context.heartbeat_timer.items():
+        for (_, timer) in self._context.heartbeat_timer.items(): # 타이머 초기화 하자
             timer.cancel()
         self._context.heartbeat_timer.clear()
-        self._context.timestamp = time.time()
+        self._context.timestamp = time.time() #타이머 다시시작
 
         message = {
             "type": "leader_is_here",
             "uuid": self.uuid,
             "timestamp": self._context.timestamp,
-            "peer_count": len(self._context.peer_list) + 1
+            "peer_count": len(self._context.peer_list) + 1 #자신을 포함함
         }
-        self.send_message(message, (network.NETWORK_BROADCAST_ADDR, network.NETWORK_PORT))
+        self.send_message(message, (network.NETWORK_BROADCAST_ADDR, network.NETWORK_PORT)) #위의 메시지를 브로드캐스트 한다 
 
         index = 0
-        for (uuid, addr) in self._context.peer_list:
+        for (uuid, addr) in self._context.peer_list: #피어 하나하나에게 보내는 메시지 
             self._context.heartbeat_timer[uuid] = \
-                self.async_trigger(lambda: self.master_heartbeat_timeout(uuid), _LONG / 2)
+                self.async_trigger(lambda: self.master_heartbeat_timeout(uuid), _LONG / 2) #타이머 설정
             index += 1
             message = {
                 "type": "peer_list",
                 "uuid": self.uuid,
                 "timestamp": self._context.timestamp,
-                "peer_index": index,
+                "peer_index": index, #피어마다 인덱스 부여 
                 "peer_uuid": uuid,
                 "peer_addr": addr,
             }
@@ -102,7 +113,7 @@ class DHT(network.Network, timer.Timer):
                 if self._context.master_timestamp == message["timestamp"]:
                     self._context.peer_index[message["peer_index"]] = (message["peer_uuid"], message["peer_addr"])
 
-                    if (len(self._context.peer_index) + 1) == self._context.peer_count:
+                    if (len(self._context.peer_index) + 1) == self._context.peer_count: 
                         self._context.peer_list = []
                         for i in range(1, self._context.peer_count):
                             self._context.peer_list.append(self._context.peer_index[i])
@@ -232,7 +243,7 @@ class DHT(network.Network, timer.Timer):
                 self._state = self.State.MASTER
                 self._context = self.MasterContext()
                 asyncio.ensure_future(self.master(), loop=self._loop)
-            else:
+            else: #리더 선출 
                 max_val = self.uuid
                 max_addr = None
                 unique_addr = set()
@@ -272,8 +283,19 @@ class DHT(network.Network, timer.Timer):
         self._state = self.State.START
         self._loop = loop
         self._context = None
-
+        ##############inserted code here#####################
+        self.table = {} # key-value 정보
+        #ex 
+        # key = LeeKH , value = CHEOGO
+        # hashval = hashfunc(key)
+        # try :
+        #   table[hashval][key] = 
+        # except:
+        #   table[hashval]= {}
+        #   table[hashval][key] = value
+        #######################end###########################
         import uuid
         self.uuid = str(uuid.uuid1())
 
         asyncio.ensure_future(self.start(), loop=self._loop)
+    
