@@ -7,6 +7,7 @@ import logging
 import datetime
 import time
 
+import cli
 import hashlib
 
 _SHORT = datetime.timedelta(seconds=1)
@@ -29,6 +30,7 @@ class DHT(network.Network, timer.Timer): #상속 받음
         START = 1
         MASTER = 2
         SLAVE = 3
+        CLI = 4
     def key_insertion(self,key,value):
         hashval = hashfunc(key)
         try :
@@ -178,6 +180,18 @@ class DHT(network.Network, timer.Timer): #상속 받음
             #dup메시지의 경우 묻지도 따지지도 않고 그냥 저장한다
             key_val = message['key']
             self.key_insertion(key_val)
+            pass
+        elif message['type'] == "CLI_connect":
+            logging.info("Client request: CLI_connect")
+            message['type'] = 'CLI_response'
+            message['uuid'] = self.uuid
+            message['peers'] = self._context.peer_list
+            send_message(message,addr)
+            pass
+        elif message['type'] =="CLI_response":
+            logging.info("Client request: CLI_response")
+            logging.info("uuid : {uuid}".format(uuid=message['uuid']))
+            logging.info("peers : {peers}".format(peers=message['peers']))
             pass
 
     def master_peer_list_updated(self):
@@ -329,25 +343,52 @@ class DHT(network.Network, timer.Timer): #상속 받음
 
         pass
 
-    def __init__(self, loop):
-        network.Network.__init__(self, loop)
-        timer.Timer.__init__(self, loop)
-        self._state = self.State.START
-        self._loop = loop
-        self._context = None
-        ##############inserted code here#####################
-        self.table = {} # key-value 정보
-        #ex 
-        # key = LeeKH , value = CHEOGO
-        # hashval = hashfunc(key)
-        # try :
-        #   table[hashval][key] = 
-        # except:
-        #   table[hashval]= {}
-        #   table[hashval][key] = value
-        #######################end###########################
-        import uuid
-        self.uuid = str(uuid.uuid1())
+    def __init__(self, loop,cli=False):
+        if not cli:
+            network.Network.__init__(self, loop)
+            timer.Timer.__init__(self, loop)
+            self._state = self.State.START
+            self._loop = loop
+            self._context = None
+            ##############inserted code here#####################
+            self.table = {} # key-value 정보
+            #ex 
+            # key = LeeKH , value = CHEOGO
+            # hashval = hashfunc(key)
+            # try :
+            #   table[hashval][key] = 
+            # except:
+            #   table[hashval]= {}
+            #   table[hashval][key] = value
+            #######################end###########################
+            import uuid
+            self.uuid = str(uuid.uuid1())
 
-        asyncio.ensure_future(self.start(), loop=self._loop)
-    
+            asyncio.ensure_future(self.start(), loop=self._loop)
+        else:
+            network.Network.__init__(self, loop)
+            timer.Timer.__init__(self, loop)
+            self._state = self.State.CLI
+            self._loop = loop
+            self._context = None
+            ##############inserted code here#####################
+            self.table = {} # key-value 정보
+            #ex 
+            # key = LeeKH , value = CHEOGO
+            # hashval = hashfunc(key)
+            # try :
+            #   table[hashval][key] = 
+            # except:
+            #   table[hashval]= {}
+            #   table[hashval][key] = value
+            #######################end###########################
+            import uuid
+            self.uuid = str(uuid.uuid1())
+            #모든 노드 검사 
+            broad_cast_addr = (network.NETWORK_BROADCAST_ADDR,network.NETWORK_PORT)
+            message ={
+                'type':'CLI_connect',
+                'uuid': self.uuid
+            }
+            self.send_message(message,broad_cast_addr) #모든 노드에 보내기 
+            cli.cli()
