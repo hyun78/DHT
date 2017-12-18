@@ -183,11 +183,14 @@ class DHT(network.Network, timer.Timer): #상속 받음
             pass
         elif message['type'] == "CLI_connect":
             logging.info("Client request: CLI_connect")
-            message['type'] = 'CLI_response'
-            message['uuid'] = self.uuid
-            message['peers'] = self._context.peer_list
-            self.send_message(message,addr)
-            logging.info("sended cli response")
+            if (self._state!=1):
+                message['type'] = 'CLI_response'
+                message['uuid'] = self.uuid
+                message['peers'] = self._context.peer_list
+                self.send_message(message,addr)
+                logging.info("sended cli response")
+            else:
+                logging.info("start context node should not send cli response")
 
             pass
         elif message['type'] =="CLI_response":
