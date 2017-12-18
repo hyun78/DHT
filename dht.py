@@ -194,6 +194,14 @@ class DHT(network.Network, timer.Timer): #상속 받음
             logging.info("Client request: CLI_response")
             logging.info("uuid : {uuid}".format(uuid=message['uuid']))
             logging.info("peers : {peers}".format(peers=message['peers']))
+            cli.cli()
+            broad_cast_addr = (network.NETWORK_BROADCAST_ADDR,network.NETWORK_PORT)
+            message ={
+                'type':'CLI_connect',
+                'uuid': self.uuid
+            }
+            
+            self.send_message(message,broad_cast_addr)
             pass
 
     def master_peer_list_updated(self):
@@ -394,6 +402,4 @@ class DHT(network.Network, timer.Timer): #상속 받음
                     'uuid': self.uuid
                 }
                 self.send_message(message,broad_cast_addr) #모든 노드에 보내기 
-                
-                cli.cli()            
             asyncio.ensure_future(cli_start(),loop=self._loop)
