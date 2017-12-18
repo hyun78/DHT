@@ -1,6 +1,10 @@
 import network
 def cli():
-	while(True):
-		print("Starting CLI ... ")
-		print("options \n i : insert \n s :search \n d : deletion")
-		option_ = input("type a message type ")
+
+	print("Starting CLI ... ")
+	print("options \n i : insert \n s :search \n d : deletion \n v : view all nodes \n c : connect to nodes with index")
+	option_ = input("type a message type ")
+	if (option_=='v'):
+		pass
+	
+	return 
