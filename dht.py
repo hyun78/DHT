@@ -7,12 +7,22 @@ import logging
 import datetime
 import time
 
+import hashlib
 
 _SHORT = datetime.timedelta(seconds=1)
 _LONG = datetime.timedelta(seconds=5)
 _MARGIN = 2
 _REPEAT = _MARGIN * (_LONG / _SHORT)
-
+# input : python string
+# output : hex string without 0x
+def hashfunc(msg):
+    msg = msg.encode()
+    m = hashlib.sha512()
+    m.update(msg)
+    hashed_msg = m.digest()
+    int_msg = int.from_bytes(hashed_msg,byteorder='big')
+    hashval = hex(int_msg)[2:]
+    return hashval
 
 class DHT(network.Network, timer.Timer): #상속 받음 
     class State(Enum):
@@ -22,11 +32,16 @@ class DHT(network.Network, timer.Timer): #상속 받음
     def key_insertion(self,key,value):
         hashval = hashfunc(key)
         try :
-            table[hashval][key] = value
+            if (key in self.table[hashval].keys()):
+                logging.info("insertion failed : duplicate insertion")
+            else:
+                self.table[hashval][key] = (key,value)
+                logging.info("insertion successed")
+                return True
         except:
-            table[hashval]= {}
-            table[hashval][key] = value
-        pass
+            self.table[hashval]= {}
+            self.table[hashval][key] = (key,value)
+        return False
     def key_deletion(self):
 
         pass
@@ -120,12 +135,49 @@ class DHT(network.Network, timer.Timer): #상속 받음
                         self.slave_peer_list_updated()
         elif message["type"] == "search":
             logging.info("Client request: search")
+
             pass
         elif message["type"] == "insert":
             logging.info("Client request: insert")
+            ####################################
+            #validation check
+            key_val = message['key']
+            hash_val = hashfunc(key_val)
+            #get my index
+            idx = int(hash_val,16) // len(self._context.peer_count)
+            my_idx = None
+            if (idx == my_idx): # 내가 바로 주인인 경우
+                #내 테이블에 저장하고, 내 주변 테이블에 복제한다.
+                if (self.key_insertion(key_val)):
+                    dup_message = {
+                        'type' : 'duplication',
+                        'uuid' : self.uuid,
+                        'key' : key_val
+                    }
+                    neer_idx = (idx+1) % len(self._context.peer_index)
+                    addr = self._context.peer_index[neer_idx]
+                    self.send_message(dup_message,addr)
+                    neer_idx = (idx-1) % len(self._context.peer_index)
+                    addr = self._context.peer_index[neer_idx]
+                    self.send_message(dup_message,addr)
+            else: # 주인이 아닌 경우, 주인에게 전송해 준다.
+                msg = {
+                    'type': 'insertion',
+                    'uuid': self.uuid,
+                    'key': key_val
+                }
+                addr = self._context.peer_index[idx]
+                self.send_message(msg,addr)
+            ####################################
             pass
         elif message["type"] == "delete":
             logging.info("Client request: delete")
+            pass
+        elif message["type"] =="duplication":
+            logging.info("Client request: duplication")
+            #dup메시지의 경우 묻지도 따지지도 않고 그냥 저장한다
+            key_val = message['key']
+            self.key_insertion(key_val)
             pass
 
     def master_peer_list_updated(self):
