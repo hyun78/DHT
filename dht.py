@@ -343,8 +343,8 @@ class DHT(network.Network, timer.Timer): #상속 받음
 
         pass
 
-    def __init__(self, loop,cli=False):
-        if not cli:
+    def __init__(self, loop,cli_option=False):
+        if not cli_option:
             network.Network.__init__(self, loop)
             timer.Timer.__init__(self, loop)
             self._state = self.State.START
