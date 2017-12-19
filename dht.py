@@ -197,10 +197,10 @@ class DHT(network.Network, timer.Timer): #상속 받음
             if (self._state==self.State.MASTER):
                 message['peer_index'] = self._context.peer_index
             self.send_message(message,addr)
-            logging.info("Client request: send cli response")
+            logging.info("Client request: send cli hello response")
             pass
         elif message['type'] =="CLI_hello_response":
-            logging.info("Client request: CLI_response")
+            logging.info("Client request: CLI_hello_response")
             logging.info("uuid : {uuid}".format(uuid=message['uuid']))
             try:
                 self._context.node_info.append(message['peer_index'])
@@ -235,7 +235,9 @@ class DHT(network.Network, timer.Timer): #상속 받음
             self._context.connected_nodeinfo['peers'] = message['peers']
             self._context.connected_nodeinfo['table'] = message['table']
             #broad_cast_addr = (network.NETWORK_BROADCAST_ADDR,network.NETWORK_PORT)
+            logging.info("Client request: CLI_response before ensure future")
             asyncio.ensure_future(self.cli_connected_context(addr),loop=self._loop)
+            logging.info("Client request: CLI_response after ensure future")
             #self.send_message(message,broad_cast_addr)
             pass
 

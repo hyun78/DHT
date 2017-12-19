@@ -15,6 +15,17 @@ def main():
     finally:
         loop.close()
     pass
+def cli_main():
+	loop = asyncio.new_event_loop()
+
+    dht.DHT(loop,True)
+    
+    try:
+        loop.run_forever()
+        
+    finally:
+        loop.close()
+    pass
 
 if __name__ == "__main__":
     main()
