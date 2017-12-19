@@ -191,13 +191,13 @@ class DHT(network.Network, timer.Timer): #상속 받음
             self.key_insertion(key_val,value)
             pass
         elif message['type'] == "CLI_hello":
-            logging.info("Client request: CLI_hello")
+            #logging.info("Client request: CLI_hello")
             message['type'] = 'CLI_hello_response'
             message['uuid'] = self.uuid
             if (self._state==self.State.MASTER):
                 message['peer_index'] = self._context.peer_index
             self.send_message(message,addr)
-            logging.info("Client request: send cli hello response")
+            #logging.info("Client request: send cli hello response")
             pass
         elif message['type'] =="CLI_hello_response":
             logging.info("Client request: CLI_hello_response")
@@ -489,6 +489,8 @@ class DHT(network.Network, timer.Timer): #상속 받음
                 }
                 print("send cli connect message in function cli")
                 self.send_message(msg,addr)
+                print(addr)
+                print(msg)
                 break
             elif (option_=='q'):
                 break
