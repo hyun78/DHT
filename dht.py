@@ -200,14 +200,15 @@ class DHT(network.Network, timer.Timer): #상속 받음
             #logging.info("Client request: send cli hello response")
             pass
         elif message['type'] =="CLI_hello_response":
-            logging.info("Client request: CLI_hello_response")
-            logging.info("uuid : {uuid}".format(uuid=message['uuid']))
-            try:
-                self._context.node_info.append(message['peer_index'])
-            except:
-                pass
-            logging.info("Client request: end cli response")
-            #broad_cast_addr = (network.NETWORK_BROADCAST_ADDR,network.NETWORK_PORT)
+            if (self._state==0):
+                logging.info("Client request: CLI_hello_response")
+                logging.info("uuid : {uuid}".format(uuid=message['uuid']))
+                try:
+                    self._context.node_info.append(message['peer_index'])
+                except:
+                    pass
+                logging.info("Client request: end cli response")
+                #broad_cast_addr = (network.NETWORK_BROADCAST_ADDR,network.NETWORK_PORT)
             
             #self.send_message(message,broad_cast_addr)
             pass
@@ -514,7 +515,9 @@ class DHT(network.Network, timer.Timer): #상속 받음
                 'key':key_val,
                 'value':value
             }
+            print("send insert message")
             self.send_message(msg,(addr[0],addr[1]))
+            print(msg,addr)
         elif (option_=='s'):
             key_val = input("type key \n")
             ### first implementation  O(N) ###
