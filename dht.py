@@ -205,7 +205,7 @@ class DHT(network.Network, timer.Timer): #상속 받음
             logging.info("uuid : {uuid}".format(uuid=message['uuid']))
             logging.info("peers : {peers}".format(peers=message['peers']))
             self._context.node_info.append(message['peer_index'])
-            self.cli()
+            
             broad_cast_addr = (network.NETWORK_BROADCAST_ADDR,network.NETWORK_PORT)
             message ={
                 'type':'CLI_connect',
@@ -414,7 +414,7 @@ class DHT(network.Network, timer.Timer): #상속 받음
                     'uuid': self.uuid
                 }
                 self.send_message(message,broad_cast_addr) #모든 노드에 보내기
-                self.cli() 
+                asyncio.ensure_future(self.cli(),loop=self._loop)
 
             asyncio.ensure_future(cli_start(),loop=self._loop)
     class CLI_Context:
@@ -423,7 +423,7 @@ class DHT(network.Network, timer.Timer): #상속 받음
             pass
 
 
-    def cli(self):
+    async def cli(self):
 
         print("Starting CLI ... ")
         while True:
