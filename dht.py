@@ -10,8 +10,8 @@ import time
 import cli
 import hashlib
 
-_SHORT = datetime.timedelta(seconds=1)
-_LONG = datetime.timedelta(seconds=5)
+_SHORT = datetime.timedelta(seconds=10)
+_LONG = datetime.timedelta(seconds=25)
 _MARGIN = 2
 _REPEAT = _MARGIN * (_LONG / _SHORT)
 # input : python string
@@ -144,17 +144,19 @@ class DHT(network.Network, timer.Timer): #상속 받음
             ####################################
             #validation check
             key_val = message['key']
+            value = message['value']
             hash_val = hashfunc(key_val)
             #get my index
             idx = int(hash_val,16) // len(self._context.peer_count)
             my_idx = None
             if (idx == my_idx): # 내가 바로 주인인 경우
                 #내 테이블에 저장하고, 내 주변 테이블에 복제한다.
-                if (self.key_insertion(key_val)):
+                if (self.key_insertion(key_val,value)):
                     dup_message = {
                         'type' : 'duplication',
                         'uuid' : self.uuid,
-                        'key' : key_val
+                        'key' : key_val,
+                        'value': value
                     }
                     neer_idx = (idx+1) % len(self._context.peer_index)
                     addr = self._context.peer_index[neer_idx]
@@ -166,7 +168,8 @@ class DHT(network.Network, timer.Timer): #상속 받음
                 msg = {
                     'type': 'insertion',
                     'uuid': self.uuid,
-                    'key': key_val
+                    'key': key_val,
+                    'value': value
                 }
                 addr = self._context.peer_index[idx]
                 self.send_message(msg,addr)
@@ -179,7 +182,8 @@ class DHT(network.Network, timer.Timer): #상속 받음
             logging.info("Client request: duplication")
             #dup메시지의 경우 묻지도 따지지도 않고 그냥 저장한다
             key_val = message['key']
-            self.key_insertion(key_val)
+            value = message['value']
+            self.key_insertion(key_val,value)
             pass
         elif message['type'] == "CLI_connect":
             logging.info("Client request: CLI_connect")
@@ -187,6 +191,7 @@ class DHT(network.Network, timer.Timer): #상속 받음
                 message['type'] = 'CLI_response'
                 message['uuid'] = self.uuid
                 message['peers'] = self._context.peer_list
+                message['peer_index'] = self._context.peer_index
                 self.send_message(message,addr)
                 logging.info("sended cli response")
             else:
@@ -197,14 +202,15 @@ class DHT(network.Network, timer.Timer): #상속 받음
             logging.info("Client request: CLI_response")
             logging.info("uuid : {uuid}".format(uuid=message['uuid']))
             logging.info("peers : {peers}".format(peers=message['peers']))
-            cli.cli()
+            self._context.node_info.append(message['peer_index'])
+            self.cli()
             broad_cast_addr = (network.NETWORK_BROADCAST_ADDR,network.NETWORK_PORT)
             message ={
                 'type':'CLI_connect',
                 'uuid': self.uuid
             }
             
-            self.send_message(message,broad_cast_addr)
+            #self.send_message(message,broad_cast_addr)
             pass
 
     def master_peer_list_updated(self):
@@ -398,6 +404,7 @@ class DHT(network.Network, timer.Timer): #상속 받음
             import uuid
             self.uuid = str(uuid.uuid1())
             async def cli_start():
+                self._context = self.CLI_Context()
                 #모든 노드 검사 
                 broad_cast_addr = (network.NETWORK_BROADCAST_ADDR,network.NETWORK_PORT)
                 message ={
@@ -405,4 +412,59 @@ class DHT(network.Network, timer.Timer): #상속 받음
                     'uuid': self.uuid
                 }
                 self.send_message(message,broad_cast_addr) #모든 노드에 보내기 
+
             asyncio.ensure_future(cli_start(),loop=self._loop)
+    class CLI_Context:
+        def __init__(self):
+            self.node_info= []
+            pass
+
+
+    def cli():
+
+        print("Starting CLI ... ")
+        while True:
+            print("v : view all nodes \n c : connect to nodes with index \n q: quit")
+            option_ = input("type a message type \n")
+            if (option_=='v'):
+                print("Available nodes")
+                print(self._context.node_info)
+                pass
+            elif (option_=='c'):
+                print("Available nodes")
+                print(self._context.node_info)            
+                nidx = input("type a node index\n")
+                flag = True
+                idx = 0
+                for i in range(len(self._context.node_info)):
+                    if nidx in self._context.node_info[i].keys():
+                        print("valid node index")
+                        flag = False
+                        idx = i
+                        break
+                if flag:
+                    print("invalid node index")
+                    continue
+                addr = self._context.node_info[idx][nidx]
+                print("options \n i : insert \n s :search \n d : deletion \n ")
+                if (option_=='i'):
+                    key_val = input("type key \n")
+                    value = input("type value \n")
+                    msg = {
+                        'type':'insertion',
+                        'uuid':self.uuid,
+                        'key':key_val,
+                        'value':value
+                    }
+                    self.send_message(msg,addr)
+                elif (option_=='s'):
+                    pass
+                elif (option_=='d'):
+                    pass
+                else:
+                    print("not implemented option")
+            elif (option_=='q'):
+                break
+            else:
+                print("not implemented option")
+        return 
