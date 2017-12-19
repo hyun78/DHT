@@ -448,12 +448,13 @@ class DHT(network.Network, timer.Timer): #상속 받음
                 'uuid': self.uuid
             }
             if (self._state == 0):
+                logging.info("hellojob sending.. why are you sending? {state}".format(state=self._state))
                 self.send_message(message,broad_cast_addr) #모든 노드에 보내기
 
         async def cli_timeout():
             self._context.cli_hello_job.cancel()
             self._state =1
-            logging.info("hellojob ended... provide statistics")
+            logging.info("hellojob ended... provide statistics , with state changed {state}".format(state=self._state))
             asyncio.ensure_future(self.cli(),loop=self._loop)
             
 
