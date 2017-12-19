@@ -439,6 +439,7 @@ class DHT(network.Network, timer.Timer): #상속 받음
             pass
     async def cli_start(self):
         self._context = self.CLI_Context()
+        self._state = 0
         async def cli_hello():
             #모든 노드 검사 
             broad_cast_addr = (network.NETWORK_BROADCAST_ADDR,network.NETWORK_PORT)
@@ -446,9 +447,12 @@ class DHT(network.Network, timer.Timer): #상속 받음
                 'type':'CLI_hello',
                 'uuid': self.uuid
             }
-            self.send_message(message,broad_cast_addr) #모든 노드에 보내기
+            if (self._state == 0):
+                self.send_message(message,broad_cast_addr) #모든 노드에 보내기
+
         async def cli_timeout():
             self._context.cli_hello_job.cancel()
+            self._state =1
             logging.info("hellojob ended... provide statistics")
             asyncio.ensure_future(self.cli(),loop=self._loop)
             
