@@ -191,14 +191,19 @@ class DHT(network.Network, timer.Timer): #상속 받음
             logging.info("Client request: CLI_hello")
             message['type'] = 'CLI_hello_response'
             message['uuid'] = self.uuid
+            if (self._state==self.State.MASTER):
+                message['peer_index'] = self._context.peer_index
             self.send_message(message,addr)
+            logging.info("Client request: send cli response")
             pass
         elif message['type'] =="CLI_hello_response":
             logging.info("Client request: CLI_response")
             logging.info("uuid : {uuid}".format(uuid=message['uuid']))
-            logging.info("peers : {peers}".format(peers=message['peers']))
-            self._context.node_info.append(message['peer_index'])
-            
+            try:
+                self._context.node_info.append(message['peer_index'])
+            except:
+                pass
+            logging.info("Client request: end cli response")
             #broad_cast_addr = (network.NETWORK_BROADCAST_ADDR,network.NETWORK_PORT)
             
             #self.send_message(message,broad_cast_addr)
@@ -437,17 +442,17 @@ class DHT(network.Network, timer.Timer): #상속 받음
                 'uuid': self.uuid
             }
             self.send_message(message,broad_cast_addr) #모든 노드에 보내기
-        async def timeout():
+        async def cli_timeout():
             self._context.hello_job.cancel()
             logging.info("hellojob ended... provide statistics")
             asyncio.ensure_future(self.cli(),loop=self._loop)
             
 
         self._context.cli_hello_job = self.async_period(cli_hello, _SHORT)
-        self._context.cli_timeout_job = self.async_trigger(timeout,_LONG)
+        self._context.cli_timeout_job = self.async_trigger(cli_timeout,_LONG)
     
     async def cli(self):
-
+        logging.info("starting cli.........")
         print("Starting CLI ... ")
         while True:
             print("v : view all nodes \n c : connect to nodes with index \n q: quit")
