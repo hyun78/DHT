@@ -513,7 +513,7 @@ class DHT(network.Network, timer.Timer): #상속 받음
                 'key':key_val,
                 'value':value
             }
-            self.send_message(msg,addr)
+            self.send_message(msg,(addr[0],addr[1]))
         elif (option_=='s'):
             key_val = input("type key \n")
             ### first implementation  O(N) ###
