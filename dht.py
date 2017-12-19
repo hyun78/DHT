@@ -513,7 +513,7 @@ class DHT(network.Network, timer.Timer): #상속 받음
             # leader에게 요청
             msg = {
                 'type':'search',
-                'uuid',addr[0],
+                'uuid':addr[0],
                 'key', key_val
             }
             self.send_message(msg,addr)
