@@ -443,7 +443,7 @@ class DHT(network.Network, timer.Timer): #상속 받음
             }
             self.send_message(message,broad_cast_addr) #모든 노드에 보내기
         async def cli_timeout():
-            self._context.hello_job.cancel()
+            self._context.cli_hello_job.cancel()
             logging.info("hellojob ended... provide statistics")
             asyncio.ensure_future(self.cli(),loop=self._loop)
             
