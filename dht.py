@@ -189,7 +189,7 @@ class DHT(network.Network, timer.Timer): #상속 받음
             pass
         elif message['type'] == "CLI_connect":
             logging.info("Client request: CLI_connect")
-            if (self._state!=1):
+            if (self._state!=self.State.START):
                 message['type'] = 'CLI_response'
                 message['uuid'] = self.uuid
                 message['peers'] = self._context.peer_list
