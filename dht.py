@@ -81,7 +81,7 @@ class DHT(network.Network, timer.Timer): #상속 받음
             self._context.peer_index[index] = (uuid,addr)#마스터도 가지고 있자.
             logging.info("peer index gived.")
             self.send_message(message, (network.NETWORK_BROADCAST_ADDR, network.NETWORK_PORT))
-
+        print(self._context.peer_index)
 
     def message_arrived(self, message, addr):
         if message["uuid"] == self.uuid:
