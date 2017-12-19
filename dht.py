@@ -412,7 +412,7 @@ class DHT(network.Network, timer.Timer): #상속 받음
             self.table = {} # key-value 정보
             import uuid
             self.uuid = str(uuid.uuid1())
-            asyncio.ensure_future(cli_start(),loop=self._loop)
+            asyncio.ensure_future(self.cli_start(),loop=self._loop)
             #####################################################
     class CLI_Context:
         def __init__(self):
