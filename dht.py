@@ -510,7 +510,7 @@ class DHT(network.Network, timer.Timer): #상속 받음
             key_val = input("type key \n")
             value = input("type value \n")
             msg = {
-                'type':'insertion',
+                'type':'insert',
                 'uuid':self.uuid,
                 'key':key_val,
                 'value':value
