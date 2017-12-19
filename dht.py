@@ -485,6 +485,7 @@ class DHT(network.Network, timer.Timer): #상속 받음
                     'uuid':self.uuid,
                 }
                 self.send_message(msg,addr)
+                break
             elif (option_=='q'):
                 break
             else:
