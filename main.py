@@ -18,14 +18,14 @@ def main():
 def cli_main():
 	loop = asyncio.new_event_loop()
 
-    dht.DHT(loop,True)
+	dht.DHT(loop,True)
     
-    try:
-        loop.run_forever()
+	try:
+		loop.run_forever()
         
-    finally:
-        loop.close()
-    pass
+	finally:
+		loop.close()
+	pass
 
 if __name__ == "__main__":
     main()
