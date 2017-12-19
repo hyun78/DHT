@@ -64,6 +64,7 @@ class DHT(network.Network, timer.Timer): #상속 받음
         self.send_message(message, (network.NETWORK_BROADCAST_ADDR, network.NETWORK_PORT)) #위의 메시지를 브로드캐스트 한다 
 
         index = 0
+        self._context.peer_index = {} #마스터도 가지고 있자.
         for (uuid, addr) in self._context.peer_list: #피어 하나하나에게 보내는 메시지 
             self._context.heartbeat_timer[uuid] = \
                 self.async_trigger(lambda: self.master_heartbeat_timeout(uuid), _LONG / 2) #타이머 설정
@@ -76,6 +77,7 @@ class DHT(network.Network, timer.Timer): #상속 받음
                 "peer_uuid": uuid,
                 "peer_addr": addr,
             }
+            self._context.peer_index[index] = (uuid,addr)#마스터도 가지고 있자.
             self.send_message(message, (network.NETWORK_BROADCAST_ADDR, network.NETWORK_PORT))
 
     def message_arrived(self, message, addr):
@@ -259,7 +261,7 @@ class DHT(network.Network, timer.Timer): #상속 받음
             self.timestamp = time.time()
             self.heartbeat_send_job = None
             self.heartbeat_timer = {}
-
+            self.peer_index = {}
         def cancel(self):
             if self.heartbeat_send_job is not None:
                 self.heartbeat_send_job.cancel()
@@ -411,7 +413,8 @@ class DHT(network.Network, timer.Timer): #상속 받음
                     'type':'CLI_connect',
                     'uuid': self.uuid
                 }
-                self.send_message(message,broad_cast_addr) #모든 노드에 보내기 
+                self.send_message(message,broad_cast_addr) #모든 노드에 보내기
+                self.cli() 
 
             asyncio.ensure_future(cli_start(),loop=self._loop)
     class CLI_Context:
