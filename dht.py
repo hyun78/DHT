@@ -423,7 +423,7 @@ class DHT(network.Network, timer.Timer): #상속 받음
             pass
 
 
-    def cli():
+    def cli(self):
 
         print("Starting CLI ... ")
         while True:
