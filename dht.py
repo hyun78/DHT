@@ -10,8 +10,8 @@ import time
 import cli
 import hashlib
 
-_SHORT = datetime.timedelta(seconds=10)
-_LONG = datetime.timedelta(seconds=25)
+_SHORT = datetime.timedelta(seconds=1)
+_LONG = datetime.timedelta(seconds=5)
 _MARGIN = 2
 _REPEAT = _MARGIN * (_LONG / _SHORT)
 # input : python string
