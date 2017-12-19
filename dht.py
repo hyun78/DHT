@@ -459,7 +459,7 @@ class DHT(network.Network, timer.Timer): #상속 받음
             asyncio.ensure_future(self.cli(),loop=self._loop)
             
 
-        self._context.cli_hello_job = self.async_period(cli_hello, _SHORT)
+        self._context.cli_hello_job = self.async_period(cli_hello, _LONG)
         self._context.cli_timeout_job = self.async_trigger(cli_timeout,_LONGLONG)
     
     async def cli(self):
