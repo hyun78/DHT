@@ -187,6 +187,22 @@ class DHT(network.Network, timer.Timer): #상속 받음
             value = message['value']
             self.key_insertion(key_val,value)
             pass
+        elif message['type'] == "CLI_hello":
+            logging.info("Client request: CLI_hello")
+            message['type'] = 'CLI_hello_response'
+            message['uuid'] = self.uuid
+            self.send_message(message,addr)
+            pass
+        elif message['type'] =="CLI_hello_response":
+            logging.info("Client request: CLI_response")
+            logging.info("uuid : {uuid}".format(uuid=message['uuid']))
+            logging.info("peers : {peers}".format(peers=message['peers']))
+            self._context.node_info.append(message['peer_index'])
+            
+            #broad_cast_addr = (network.NETWORK_BROADCAST_ADDR,network.NETWORK_PORT)
+            
+            #self.send_message(message,broad_cast_addr)
+            pass
         elif message['type'] == "CLI_connect":
             logging.info("Client request: CLI_connect")
             if (self._state!=self.State.START):
@@ -194,6 +210,7 @@ class DHT(network.Network, timer.Timer): #상속 받음
                 message['uuid'] = self.uuid
                 message['peers'] = self._context.peer_list
                 message['peer_index'] = self._context.peer_index
+                message['table'] = self.table
                 self.send_message(message,addr)
                 logging.info("sended cli response")
             else:
@@ -204,14 +221,13 @@ class DHT(network.Network, timer.Timer): #상속 받음
             logging.info("Client request: CLI_response")
             logging.info("uuid : {uuid}".format(uuid=message['uuid']))
             logging.info("peers : {peers}".format(peers=message['peers']))
-            self._context.node_info.append(message['peer_index'])
-            
-            broad_cast_addr = (network.NETWORK_BROADCAST_ADDR,network.NETWORK_PORT)
-            message ={
-                'type':'CLI_connect',
-                'uuid': self.uuid
-            }
-            
+            self._context.connected_nodeinfo = {}
+            self._context.connected_nodeinfo['uuid'] = message['uuid']
+            self._context.connected_nodeinfo['addr'] = addr
+            self._context.connected_nodeinfo['peers'] = message['peers']
+            self._context.connected_nodeinfo['table'] = message['table']
+            #broad_cast_addr = (network.NETWORK_BROADCAST_ADDR,network.NETWORK_PORT)
+            asyncio.ensure_future(self.cli_connected_context(addr),loop=self._loop)
             #self.send_message(message,broad_cast_addr)
             pass
 
@@ -386,43 +402,50 @@ class DHT(network.Network, timer.Timer): #상속 받음
             self.uuid = str(uuid.uuid1())
 
             asyncio.ensure_future(self.start(), loop=self._loop)
-        else:
+        else: #CLI 의 경우
             network.Network.__init__(self, loop)
             timer.Timer.__init__(self, loop)
             self._state = self.State.CLI
             self._loop = loop
             self._context = None
-            ##############inserted code here#####################
+            #####################################################
             self.table = {} # key-value 정보
-            #ex 
-            # key = LeeKH , value = CHEOGO
-            # hashval = hashfunc(key)
-            # try :
-            #   table[hashval][key] = 
-            # except:
-            #   table[hashval]= {}
-            #   table[hashval][key] = value
-            #######################end###########################
             import uuid
             self.uuid = str(uuid.uuid1())
-            async def cli_start():
-                self._context = self.CLI_Context()
-                #모든 노드 검사 
-                broad_cast_addr = (network.NETWORK_BROADCAST_ADDR,network.NETWORK_PORT)
-                message ={
-                    'type':'CLI_connect',
-                    'uuid': self.uuid
-                }
-                self.send_message(message,broad_cast_addr) #모든 노드에 보내기
-                asyncio.ensure_future(self.cli(),loop=self._loop)
-
             asyncio.ensure_future(cli_start(),loop=self._loop)
+            #####################################################
     class CLI_Context:
         def __init__(self):
             self.node_info= []
+            self.connected_nodeinfo = None
+            self.cli_hello_job = None
+            self.cli_timeout_job = None
             pass
+        def cancel(self):
+            if self.cli_hello_job is not None:
+                self.cli_hello_job.cancel()
+            if self.cli_timeout_job is not None:
+                self.cli_timeout_job.cancel()
+            pass
+    async def cli_start():
+        self._context = self.CLI_Context()
+        async def cli_hello():
+            #모든 노드 검사 
+            broad_cast_addr = (network.NETWORK_BROADCAST_ADDR,network.NETWORK_PORT)
+            message ={
+                'type':'CLI_hello',
+                'uuid': self.uuid
+            }
+            self.send_message(message,broad_cast_addr) #모든 노드에 보내기
+        async def timeout():
+            self._context.hello_job.cancel()
+            logging.info("hellojob ended... provide statistics")
+            asyncio.ensure_future(self.cli(),loop=self._loop)
+            
 
-
+        self._context.cli_hello_job = self.async_period(cli_hello, _SHORT)
+        self._context.cli_timeout_job = self.async_trigger(timeout,_LONG)
+    
     async def cli(self):
 
         print("Starting CLI ... ")
@@ -449,25 +472,54 @@ class DHT(network.Network, timer.Timer): #상속 받음
                     print("invalid node index")
                     continue
                 addr = self._context.node_info[idx][nidx]
-                print("options \n i : insert \n s :search \n d : deletion \n ")
-                if (option_=='i'):
-                    key_val = input("type key \n")
-                    value = input("type value \n")
-                    msg = {
-                        'type':'insertion',
-                        'uuid':self.uuid,
-                        'key':key_val,
-                        'value':value
-                    }
-                    self.send_message(msg,addr)
-                elif (option_=='s'):
-                    pass
-                elif (option_=='d'):
-                    pass
-                else:
-                    print("not implemented option")
+                msg = {
+                    'type':'CLI_connect',
+                    'uuid':self.uuid,
+                }
+                self.send_message(msg,addr)
             elif (option_=='q'):
                 break
             else:
                 print("not implemented option")
         return 
+    async def cli_connected_context(self,addr):
+        print("options \n i : insert \n s :search \n d : deletion \n ")
+        option_= input("type option \n")
+        if (option_=='i'):
+            key_val = input("type key \n")
+            value = input("type value \n")
+            msg = {
+                'type':'insertion',
+                'uuid':self.uuid,
+                'key':key_val,
+                'value':value
+            }
+            self.send_message(msg,addr)
+        elif (option_=='s'):
+            key_val = input("type key \n")
+            ### first implementation  O(N) ###
+            #일단 자신의 table에 있는가?
+            try:
+                if key in self._context.cli_connected_context['table'].keys():
+                    print("key",self._context.cli_connected_context['table'][key])
+                else:
+                    print("this nod has no info about key")
+            except:
+                print("this nod has no info about key")
+                pass
+
+            # 접속한 노드가 리더인 경우
+            # 접속한 노드가 리더가 아닌 경우 
+            # leader에게 요청
+            msg = {
+                'type':'search',
+                'uuid',addr[0],
+                'key', key_val
+            }
+            self.send_message(msg,addr)
+            pass
+        elif (option_=='d'):
+            pass
+        else:
+            print("not implemented option")
+
