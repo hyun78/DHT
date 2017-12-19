@@ -12,6 +12,7 @@ import hashlib
 
 _SHORT = datetime.timedelta(seconds=1)
 _LONG = datetime.timedelta(seconds=5)
+_LONG = datetime.timedelta(seconds=20)
 _MARGIN = 2
 _REPEAT = _MARGIN * (_LONG / _SHORT)
 # input : python string
@@ -78,7 +79,9 @@ class DHT(network.Network, timer.Timer): #상속 받음
                 "peer_addr": addr,
             }
             self._context.peer_index[index] = (uuid,addr)#마스터도 가지고 있자.
+            logging.info("peer index gived.")
             self.send_message(message, (network.NETWORK_BROADCAST_ADDR, network.NETWORK_PORT))
+
 
     def message_arrived(self, message, addr):
         if message["uuid"] == self.uuid:
@@ -449,7 +452,7 @@ class DHT(network.Network, timer.Timer): #상속 받음
             
 
         self._context.cli_hello_job = self.async_period(cli_hello, _SHORT)
-        self._context.cli_timeout_job = self.async_trigger(cli_timeout,_LONG)
+        self._context.cli_timeout_job = self.async_trigger(cli_timeout,_LONGLONG)
     
     async def cli(self):
         logging.info("starting cli.........")
