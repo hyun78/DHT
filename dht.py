@@ -481,11 +481,13 @@ class DHT(network.Network, timer.Timer): #상속 받음
                 if flag:
                     print("invalid node index")
                     continue
+                print("get address")
                 addr = self._context.node_info[idx][nidx]
                 msg = {
                     'type':'CLI_connect',
                     'uuid':self.uuid,
                 }
+                print("send cli connect message in function cli")
                 self.send_message(msg,addr)
                 break
             elif (option_=='q'):
