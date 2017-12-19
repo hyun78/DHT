@@ -427,7 +427,7 @@ class DHT(network.Network, timer.Timer): #상속 받음
             if self.cli_timeout_job is not None:
                 self.cli_timeout_job.cancel()
             pass
-    async def cli_start():
+    async def cli_start(self):
         self._context = self.CLI_Context()
         async def cli_hello():
             #모든 노드 검사 
