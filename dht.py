@@ -554,15 +554,15 @@ class DHT(network.Network, timer.Timer): #상속 받음
             ### first implementation  O(N) ###
             #일단 자신의 table에 있는가?
             try:
-                if key in self._context.cli_connected_context['table'].keys():
-                    print("key",self._context.cli_connected_context['table'][key])
+                if key in self._context.connected_nodeinfo['table'].keys():
+                    print("key",self._context.connected_nodeinfo['table'][key])
                 else:
                     print("this nod has no info about key")
 
             except:
                 print("this nod has no info about key")
                 pass
-            print("what I know about is ... ",self._context.cli_connected_context['table'])
+            print("what I know about is ... ",self._context.connected_nodeinfo['table'])
             # 접속한 노드가 리더인 경우
             # 접속한 노드가 리더가 아닌 경우 
             # leader에게 요청
