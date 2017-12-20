@@ -45,8 +45,17 @@ class DHT(network.Network, timer.Timer): #상속 받음
             self.table[hashval]= {}
             self.table[hashval][key] = value
         return False
-    def key_deletion(self):
-
+    def key_deletion(self,key):
+        hashval = hashfunc(key)
+        try :
+            if (key in self.table[hashval].keys()):
+                self.table.pop(hashval)
+                return True
+            else:
+                return False
+        except:
+            return False
+        return False
         pass
 
     def update_peer_list(self):
@@ -145,31 +154,32 @@ class DHT(network.Network, timer.Timer): #상속 받음
 
                         self.slave_peer_list_updated()
         elif message["type"] == "search":
-            key_val = message['key']
-            logging.info("Client request: search with key : {key_val}".format(key_val=key_val))
-            # 내가 아는 정보면 key,value값을 보내주고, 모르면 무시하기
-            
-            key = hashfunc(key_val)
-            try:
-                if (key in self.table.keys()):
-                    value = self.table[key]
-                    logging.info("I have the key , key:value : {key_val} , {value}".format(key_val=key_val,value=value))
-                    msg = {
-                        "type":"CLI_search_response",
-                        "uuid": self.uuid,
-                        "key": key_val,
-                        "value": value
-                    }
-                    self.send_message(msg,addr)
-                    logging.info("Sent this info to {addr}".format(addr=addr))
-                else:
-                    logging.info("I have no idea about key : {key_val}".format(key_val=key_val))
+            if (self._state!=self.State.CLI):
+                key_val = message['key']
+                logging.info("Client request: search with key : {key_val}".format(key_val=key_val))
+                # 내가 아는 정보면 key,value값을 보내주고, 모르면 무시하기
+                
+                key = hashfunc(key_val)
+                try:
+                    if (key in self.table.keys()):
+                        value = self.table[key]
+                        logging.info("I have the key , key:value : {key_val} , {value}".format(key_val=key_val,value=value))
+                        msg = {
+                            "type":"CLI_search_response",
+                            "uuid": self.uuid,
+                            "key": key_val,
+                            "value": value
+                        }
+                        self.send_message(msg,addr)
+                        logging.info("Sent this info to {addr}".format(addr=addr))
+                    else:
+                        logging.info("I have no idea about key : {key_val}".format(key_val=key_val))
+                        logging.info("What i know is {table}".format(table=self.table))
+                except:
+                    logging.info("except case: I have no idea about key : {key_val}".format(key_val=key_val))
                     logging.info("What i know is {table}".format(table=self.table))
-            except:
-                logging.info("except case: I have no idea about key : {key_val}".format(key_val=key_val))
-                logging.info("What i know is {table}".format(table=self.table))
 
-                pass
+                    pass
 
             pass
         elif message["type"]=="CLI_search_response":
@@ -236,7 +246,15 @@ class DHT(network.Network, timer.Timer): #상속 받음
             pass
         elif message["type"] == "delete":
             logging.info("Client request: delete")
+            if (self._state!=self.State.CLI):
+                #delete를 받은 경우, 해당 키가 있다면 삭제한다.
+                if (self.key_deletion(key_val)):
+                    logging.info("successfully deleted")
+                else:
+                    logging.info("Nothing happend")
             pass
+        elif message["type"] == "CLI_delete_response":
+            if ()
         elif message["type"] =="duplication":
             logging.info("Client request: duplication")
             #dup메시지의 경우 묻지도 따지지도 않고 그냥 저장한다
@@ -246,15 +264,16 @@ class DHT(network.Network, timer.Timer): #상속 받음
             pass
         elif message['type'] == "CLI_hello":
             #logging.info("Client request: CLI_hello")
-            message['type'] = 'CLI_hello_response'
-            message['uuid'] = self.uuid
-            if (self._state==self.State.MASTER):
-                message['peer_index'] = self._context.peer_index
-            self.send_message(message,addr)
+            if (self._state!=self.State.CLI):
+                message['type'] = 'CLI_hello_response'
+                message['uuid'] = self.uuid
+                if (self._state==self.State.MASTER):
+                    message['peer_index'] = self._context.peer_index
+                self.send_message(message,addr)
             #logging.info("Client request: send cli hello response")
             pass
         elif message['type'] =="CLI_hello_response":
-            if (self._state==0):
+            if (self._context.hello_state==0):
                 uuid = message['uuid']
                 logging.info("Client request: CLI_hello_response")
                 logging.info("uuid : {uuid}".format(uuid=message['uuid']))
@@ -492,6 +511,8 @@ class DHT(network.Network, timer.Timer): #상속 받음
             self.cli_hello_job = None
             self.cli_timeout_job = None
             self.search_status = False
+            self.del_status = False
+            self.hello_state = 0
             pass
         def cancel(self):
             if self.cli_hello_job is not None:
@@ -503,7 +524,7 @@ class DHT(network.Network, timer.Timer): #상속 받음
         if (self._context!=None):
             self._context.cancel()
         self._context = self.CLI_Context()
-        self._state = 0
+        self._context.hello_state = 0
         async def cli_hello():
             #모든 노드 검사 
             broad_cast_addr = (network.NETWORK_BROADCAST_ADDR,network.NETWORK_PORT)
@@ -511,14 +532,14 @@ class DHT(network.Network, timer.Timer): #상속 받음
                 'type':'CLI_hello',
                 'uuid': self.uuid
             }
-            if (self._state == 0):
-                logging.info("hellojob sending.. why are you sending? {state}".format(state=self._state))
+            if (self._context.hello_state == 0):
+                logging.info("hellojob sending.. why are you sending? {state}".format(state=self._context.hello_state))
                 self.send_message(message,broad_cast_addr) #모든 노드에 보내기
 
         async def cli_timeout():
             self._context.cli_hello_job.cancel()
-            self._state =1
-            logging.info("hellojob ended... provide statistics , with state changed {state}".format(state=self._state))
+            self._context.hello_state =1
+            logging.info("hellojob ended... provide statistics , with state changed {state}".format(state=self._context.hello_state))
             asyncio.ensure_future(self.cli(),loop=self._loop)
             
 
@@ -622,6 +643,18 @@ class DHT(network.Network, timer.Timer): #상속 받음
                 
             pass
         elif (option_=='d'):
+            #deletion broadcasting
+            msg = {
+                    'type':'delete',
+                    'uuid':addr[0],
+                    'key': key_val
+                } 
+            async def cli_deletion_timeout():
+                logging.info("Deletion timeoout..")
+                asyncio.ensure_future(self.cli(),loop=self._loop)
+            self._context.del_status = True
+            self.cli_timeout_job = self.async_trigger(cli_deletion_timeout,_LONGLONG)  
+            self.send_message(msg,broad_cast_addr)
             pass
         else:
             print("not implemented option")
