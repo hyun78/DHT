@@ -247,6 +247,7 @@ class DHT(network.Network, timer.Timer): #상속 받음
         elif message["type"] == "delete":
             logging.info("Client request: delete")
             if (self._state!=self.State.CLI):
+                key_val = message['key']
                 #delete를 받은 경우, 해당 키가 있다면 삭제한다.
                 if (self.key_deletion(key_val)):
                     logging.info("successfully deleted")
