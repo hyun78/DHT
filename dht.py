@@ -537,7 +537,6 @@ class DHT(network.Network, timer.Timer): #상속 받음
                 if nidx in self._context.node_info.keys():
                     print("valid node index")
                     flag = False
-                    break
                 if flag:
                     print("invalid node index")
                     continue
