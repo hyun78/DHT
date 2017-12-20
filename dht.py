@@ -650,6 +650,7 @@ class DHT(network.Network, timer.Timer): #상속 받음
             pass
         elif (option_=='d'):
             #deletion broadcasting
+            key_val = input("type the key")
             msg = {
                     'type':'delete',
                     'uuid':addr[0],
@@ -658,6 +659,7 @@ class DHT(network.Network, timer.Timer): #상속 받음
             async def cli_deletion_timeout():
                 logging.info("Deletion timeoout..")
                 asyncio.ensure_future(self.cli(),loop=self._loop)
+            broad_cast_addr = (network.NETWORK_BROADCAST_ADDR,network.NETWORK_PORT)
             self._context.del_status = True
             self.cli_timeout_job = self.async_trigger(cli_deletion_timeout,_LONGLONG)  
             self.send_message(msg,broad_cast_addr)
