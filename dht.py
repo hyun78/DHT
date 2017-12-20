@@ -161,8 +161,11 @@ class DHT(network.Network, timer.Timer): #상속 받음
                         "value": value
                     }
                     self.send_message(msg,addr)
+                else:
+                    logging.info("I have no idea about key : {key_val}".format(key_val=key_val))
+                    logging.info("What i know is {table}".format(table=self.table))
             except:
-                logging.info("I have no idea about key : {key_val}".format(key_val=key_val))
+                logging.info("except case: I have no idea about key : {key_val}".format(key_val=key_val))
                 logging.info("What i know is {table}".format(table=self.table))
 
                 pass
@@ -176,6 +179,7 @@ class DHT(network.Network, timer.Timer): #상속 받음
                 logging.info("This response is from {uuid},{addr} ".format(uuid=message['uuid'],addr=addr))
                 self.cli_timeout_job.cancel()
                 self._context.search_status=False
+                asyncio.ensure_future(self.cli(),loop=self._loop)
         elif message["type"] == "insert":
             logging.info("Client request: insert")
             ####################################
@@ -612,6 +616,8 @@ class DHT(network.Network, timer.Timer): #상속 받음
                     asyncio.ensure_future(self.cli(),loop=self._loop)
                 self.cli_timeout_job = self.async_trigger(cli_search_timeout,_LONGLONG)
                 self.send_message(msg,broad_cast_addr)
+            else:
+                asyncio.ensure_future(self.cli(),loop=self._loop)
                 
             pass
         elif (option_=='d'):
