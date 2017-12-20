@@ -145,9 +145,34 @@ class DHT(network.Network, timer.Timer): #상속 받음
 
                         self.slave_peer_list_updated()
         elif message["type"] == "search":
-            logging.info("Client request: search")
+            key_val = message['key']
+            logging.info("Client request: search with key : {key_val}".format(key_val=key_val))
+            # 내가 아는 정보면 key,value값을 보내주고, 모르면 무시하기
+            
+            key = hashfunc(key_val)
+            try:
+                if (key in self.table.keys()):
+                    value = self.table[key]
+                    logging.info("I have the key , key:value : {key_val} , {value}".format(key_val=keyval,value=value))
+                    msg = {
+                        "type":"CLI_search_response",
+                        "uuid": self.uuid,
+                        "key": key_val,
+                        "value": value
+                    }
+                    self.send_message(msg,addr)
+            except:
+                logging.info("I have no idea about key : {key_val}".format(key_val=key_val))
+                pass
 
             pass
+        elif message["type"]=="CLI_search_response":
+            if (self._context.search_status):
+                key = message['key']
+                value = message['value']
+                logging.info("Client response : {key}:{value} ".format(key=key,value=value))
+                logging.info("This response is from {uuid},{addr} ".format(uuid=message['uuid'],addr=addr))
+                self._context.search_status=False
         elif message["type"] == "insert":
             logging.info("Client request: insert")
             ####################################
@@ -225,8 +250,9 @@ class DHT(network.Network, timer.Timer): #상속 받음
                 uuid = message['uuid']
                 logging.info("Client request: CLI_hello_response")
                 logging.info("uuid : {uuid}".format(uuid=message['uuid']))
-                self._context.node_idx+=1
-                self._context.node_info.append({str(self._context.node_idx):(uuid,addr)})
+                if uuid,addr not in self._context.node_info.values():
+                    self._context.node_idx+=1
+                    self._context.node_info[str(self._context.node_idx)]=(uuid,addr)
                 
                 logging.info("Client request: end cli response")
                 #broad_cast_addr = (network.NETWORK_BROADCAST_ADDR,network.NETWORK_PORT)
@@ -452,11 +478,12 @@ class DHT(network.Network, timer.Timer): #상속 받음
             #####################################################
     class CLI_Context:
         def __init__(self):
-            self.node_info= []
+            self.node_info= {}
             self.node_idx = 0
             self.connected_nodeinfo = None
             self.cli_hello_job = None
             self.cli_timeout_job = None
+            self.search_status = False
             pass
         def cancel(self):
             if self.cli_hello_job is not None:
@@ -505,18 +532,17 @@ class DHT(network.Network, timer.Timer): #상속 받음
                 print(self._context.node_info)            
                 nidx = input("type a node index\n")
                 flag = True
-                idx = 0
-                for i in range(len(self._context.node_info)):
-                    if nidx in self._context.node_info[i].keys():
-                        print("valid node index")
-                        flag = False
-                        idx = i
-                        break
+                
+                
+                if nidx in self._context.node_info.keys():
+                    print("valid node index")
+                    flag = False
+                    break
                 if flag:
                     print("invalid node index")
                     continue
                 print("get address")
-                addr = self._context.node_info[idx][nidx][1]
+                addr = self._context.node_info[nidx][1]
                 msg = {
                     'type':'CLI_connect',
                     'uuid':self.uuid
@@ -549,6 +575,7 @@ class DHT(network.Network, timer.Timer): #상속 받음
             print("send insert message")
             self.send_message(msg,(addr[0],addr[1]))
             print(msg,addr)
+            asyncio.ensure_future(self.cli(),loop=self._loop)
         elif (option_=='s'):
             key_val = input("type key \n")
             ### first implementation  O(N) ###
@@ -564,19 +591,20 @@ class DHT(network.Network, timer.Timer): #상속 받음
                 print("this nod has no info about key")
                 pass
             print("what I know about is ... ",self._context.connected_nodeinfo['table'])
-            # 접속한 노드가 리더인 경우
-            # 접속한 노드가 리더가 아닌 경우 
-            # leader에게 요청
+            #이 노드가 모른다면.. broadcast로 search를 보낸다. 
             msg = {
                 'type':'search',
                 'uuid':addr[0],
                 'key': key_val
             }
-            self.send_message(msg,addr)
+            broad_cast_addr = (network.NETWORK_BROADCAST_ADDR,network.NETWORK_PORT)
+            self._context.search_status = True
+            self.send_message(msg,broad_cast_addr)
             pass
         elif (option_=='d'):
             pass
         else:
             print("not implemented option")
-        asyncio.ensure_future(self.cli(),loop=self._loop)
+            asyncio.ensure_future(self.cli(),loop=self._loop)
+        
 
