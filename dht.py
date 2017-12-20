@@ -222,6 +222,7 @@ class DHT(network.Network, timer.Timer): #상속 받음
             pass
         elif message['type'] =="CLI_hello_response":
             if (self._state==0):
+                uuid = message['uuid']
                 logging.info("Client request: CLI_hello_response")
                 logging.info("uuid : {uuid}".format(uuid=message['uuid']))
                 self._context.node_idx+=1
