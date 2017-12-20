@@ -38,12 +38,12 @@ class DHT(network.Network, timer.Timer): #상속 받음
             if (key in self.table[hashval].keys()):
                 logging.info("insertion failed : duplicate insertion")
             else:
-                self.table[hashval][key] = (key,value)
+                self.table[hashval][key] = value
                 logging.info("insertion successed")
                 return True
         except:
             self.table[hashval]= {}
-            self.table[hashval][key] = (key,value)
+            self.table[hashval][key] = value
         return False
     def key_deletion(self):
 
@@ -553,6 +553,7 @@ class DHT(network.Network, timer.Timer): #상속 받음
             key_val = input("type key \n")
             ### first implementation  O(N) ###
             #일단 자신의 table에 있는가?
+            key = hashfunc(key_val)
             try:
                 if key in self._context.connected_nodeinfo['table'].keys():
                     print("key",self._context.connected_nodeinfo['table'][key])
