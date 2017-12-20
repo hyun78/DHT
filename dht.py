@@ -153,7 +153,7 @@ class DHT(network.Network, timer.Timer): #상속 받음
             try:
                 if (key in self.table.keys()):
                     value = self.table[key]
-                    logging.info("I have the key , key:value : {key_val} , {value}".format(key_val=keyval,value=value))
+                    logging.info("I have the key , key:value : {key_val} , {value}".format(key_val=key_val,value=value))
                     msg = {
                         "type":"CLI_search_response",
                         "uuid": self.uuid,
@@ -163,6 +163,8 @@ class DHT(network.Network, timer.Timer): #상속 받음
                     self.send_message(msg,addr)
             except:
                 logging.info("I have no idea about key : {key_val}".format(key_val=key_val))
+                logging.info("What i know is {table}".format(table=self.table))
+
                 pass
 
             pass
@@ -172,6 +174,7 @@ class DHT(network.Network, timer.Timer): #상속 받음
                 value = message['value']
                 logging.info("Client response : {key}:{value} ".format(key=key,value=value))
                 logging.info("This response is from {uuid},{addr} ".format(uuid=message['uuid'],addr=addr))
+                self.cli_timeout_job.cancle()
                 self._context.search_status=False
         elif message["type"] == "insert":
             logging.info("Client request: insert")
@@ -558,6 +561,9 @@ class DHT(network.Network, timer.Timer): #상속 받음
             else:
                 print("not implemented option")
         return 
+    async def cli_search_timeout():
+            logging.info("Search timeout.. There maybe no key about that key")
+            asyncio.ensure_future(self.cli(),loop=self._loop)
     async def cli_connected_context(self,addr):
         print("Connected to addr {addr} ".format(addr=addr))
         print("options \n i : insert \n s :search \n d : deletion \n ")
@@ -580,25 +586,30 @@ class DHT(network.Network, timer.Timer): #상속 받음
             ### first implementation  O(N) ###
             #일단 자신의 table에 있는가?
             key = hashfunc(key_val)
+            flag = True
             try:
                 if key in self._context.connected_nodeinfo['table'].keys():
+                    print("Hey, I know about key haha")
                     print("key",self._context.connected_nodeinfo['table'][key])
+                    flag = False
                 else:
                     print("this nod has no info about key")
 
             except:
-                print("this nod has no info about key")
+                print("this node has no info about key")
                 pass
-            print("what I know about is ... ",self._context.connected_nodeinfo['table'])
-            #이 노드가 모른다면.. broadcast로 search를 보낸다. 
-            msg = {
-                'type':'search',
-                'uuid':addr[0],
-                'key': key_val
-            }
-            broad_cast_addr = (network.NETWORK_BROADCAST_ADDR,network.NETWORK_PORT)
-            self._context.search_status = True
-            self.send_message(msg,broad_cast_addr)
+            if (flag):
+                print("what I know about is ... ",self._context.connected_nodeinfo['table'])
+                #이 노드가 모른다면.. broadcast로 search를 보낸다. 
+                msg = {
+                    'type':'search',
+                    'uuid':addr[0],
+                    'key': key_val
+                }
+                broad_cast_addr = (network.NETWORK_BROADCAST_ADDR,network.NETWORK_PORT)
+                self._context.search_status = True
+                self.send_message(msg,broad_cast_addr)
+                self.cli_timeout_job = self.async_trigger(cli_search_timeout,_LONGLONG)
             pass
         elif (option_=='d'):
             pass
