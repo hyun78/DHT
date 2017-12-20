@@ -250,7 +250,7 @@ class DHT(network.Network, timer.Timer): #상속 받음
                 uuid = message['uuid']
                 logging.info("Client request: CLI_hello_response")
                 logging.info("uuid : {uuid}".format(uuid=message['uuid']))
-                if uuid,addr not in self._context.node_info.values():
+                if (uuid,addr) not in self._context.node_info.values():
                     self._context.node_idx+=1
                     self._context.node_info[str(self._context.node_idx)]=(uuid,addr)
                 
