@@ -464,7 +464,8 @@ class DHT(network.Network, timer.Timer): #상속 받음
                 self.cli_timeout_job.cancel()
             pass
     async def cli_start(self):
-        self._context.cancle()
+        if (self._context!=None):
+            self._context.cancle()
         self._context = self.CLI_Context()
         self._state = 0
         async def cli_hello():
