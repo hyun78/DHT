@@ -65,6 +65,7 @@ class DHT(network.Network, timer.Timer): #상속 받음
         self.send_message(message, (network.NETWORK_BROADCAST_ADDR, network.NETWORK_PORT)) #위의 메시지를 브로드캐스트 한다 
 
         index = 0
+        self._context.peer_count = 1
         self._context.peer_index = {} #마스터도 가지고 있자.
         for (uuid, addr) in self._context.peer_list: #피어 하나하나에게 보내는 메시지 
             self._context.heartbeat_timer[uuid] = \
