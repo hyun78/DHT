@@ -558,10 +558,11 @@ class DHT(network.Network, timer.Timer): #상속 받음
                     print("key",self._context.cli_connected_context['table'][key])
                 else:
                     print("this nod has no info about key")
+
             except:
                 print("this nod has no info about key")
                 pass
-
+            print("what I know about is ... ",self._context.cli_connected_context['table'])
             # 접속한 노드가 리더인 경우
             # 접속한 노드가 리더가 아닌 경우 
             # leader에게 요청
