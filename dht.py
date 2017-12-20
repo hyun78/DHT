@@ -174,7 +174,7 @@ class DHT(network.Network, timer.Timer): #상속 받음
                 value = message['value']
                 logging.info("Client response : {key}:{value} ".format(key=key,value=value))
                 logging.info("This response is from {uuid},{addr} ".format(uuid=message['uuid'],addr=addr))
-                self.cli_timeout_job.cancle()
+                self.cli_timeout_job.cancel()
                 self._context.search_status=False
         elif message["type"] == "insert":
             logging.info("Client request: insert")
@@ -496,7 +496,7 @@ class DHT(network.Network, timer.Timer): #상속 받음
             pass
     async def cli_start(self):
         if (self._context!=None):
-            self._context.cancle()
+            self._context.cancel()
         self._context = self.CLI_Context()
         self._state = 0
         async def cli_hello():
@@ -556,6 +556,7 @@ class DHT(network.Network, timer.Timer): #상속 받음
                 break
             elif (option_=='u'):
                 asyncio.ensure_future(self.cli_start(),loop=self._loop)
+                break
             elif (option_=='q'):
                 break
             else:
