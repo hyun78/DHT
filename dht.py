@@ -160,7 +160,7 @@ class DHT(network.Network, timer.Timer): #상속 받음
                 idx = int(hash_val,16) % self._context.peer_count 
             except:
                 idx = 0
-            my_idx = self.my_idx
+            my_idx = self._context.my_idx
             
             if (idx == my_idx): # 내가 바로 주인인 경우
                 #내 테이블에 저장하고, 내 주변 테이블에 복제한다.
