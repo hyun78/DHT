@@ -120,7 +120,24 @@ class DHT(network.Network, timer.Timer): #상속 받음
         self._context.peer_count = 1
         self._context.peer_index = {} #마스터도 가지고 있자.
         #timeout job 활성화 
-
+        self._context.gather_state = True# 정보 취합 시작
+        async def master_gather_timeout():
+            self._context.gather_state = False
+            #타임아웃이 발생하면 현재 모인 정보중 부족한 key-value쌍을 찾아서 redistribution합니다. 이때 duplicate method를 사용합니다.
+            master_table = {}
+            for hashtable in self._context.master_table:
+                for hashval,key_value_dict in hashtable.items():
+                    for key,value in key_value_dict.items():
+                        try:
+                            master_table[key][1]+=1
+                        except:
+                            master_table[key] = [value,1]
+            #3개 이하인 key-value pair의 경우, 프로토콜에 따라 distribution합니다.
+            for key,value_ in master_table.items():
+                if (value_[1] <= 3):
+                    self.insert_redistribution_msg(key,value_[0])
+         
+        self._context.master_timeout_job = self.async_trigger(master_gather_timeout,_LONGLONG) # timeout job 활성화
         for (uuid, addr) in self._context.peer_list: #피어 하나하나에게 보내는 메시지 
             self._context.heartbeat_timer[uuid] = \
                 self.async_trigger(lambda: self.master_heartbeat_timeout(uuid), _LONG / 2) #타이머 설정
@@ -137,6 +154,7 @@ class DHT(network.Network, timer.Timer): #상속 받음
             logging.info("peer index gived.")
             self.send_message(message, (network.NETWORK_BROADCAST_ADDR, network.NETWORK_PORT))
             self._context.peer_count +=1
+
         print(self._context.peer_index)
 
     def message_arrived(self, message, addr):
@@ -452,6 +470,7 @@ class DHT(network.Network, timer.Timer): #상속 받음
             self.peer_count = 1
             self.my_idx = 0
             self.master_timeout_job = None
+            self.gather_state = False
         def cancel(self):
             if self.heartbeat_send_job is not None:
                 self.heartbeat_send_job.cancel()
