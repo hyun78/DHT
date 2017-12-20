@@ -153,7 +153,7 @@ class DHT(network.Network, timer.Timer): #상속 받음
             value = message['value']
             hash_val = hashfunc(key_val)
             #get my index
-            idx = int(hash_val,16) // self._context.peer_count
+            idx = int(hash_val,16) % self._context.peer_count
             my_idx = None
             if (idx == my_idx): # 내가 바로 주인인 경우
                 #내 테이블에 저장하고, 내 주변 테이블에 복제한다.
