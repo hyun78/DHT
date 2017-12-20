@@ -32,6 +32,49 @@ class DHT(network.Network, timer.Timer): #상속 받음
         MASTER = 2
         SLAVE = 3
         CLI = 4
+    def insert_redistribution_msg(self,key,value):
+        key_val = key
+        hash_val = hashfunc(key)
+        try:
+            idx = int(hash_val,16) % self._context.peer_count 
+        except:
+            idx = 0
+        my_idx = self._context.my_idx
+        if (idx == my_idx): # 내가 바로 주인인 경우
+            #내 테이블에 저장하고, 내 주변 테이블에 복제한다.
+            logging.info("insert in my table")
+            if (self.key_insertion(key_val,value)):
+                dup_message = {
+                    'type' : 'duplication',
+                    'uuid' : self.uuid,
+                    'key' : key_val,
+                    'value': value
+                }
+                if (self._context.peer_count != 0):
+                    neer_idx = (idx+1) % len(self._context.peer_index)
+                    addr = self._context.peer_index[neer_idx]
+                    self.send_message(dup_message,addr)
+                    neer_idx = (idx-1) % len(self._context.peer_index)
+                    addr = self._context.peer_index[neer_idx]
+                    self.send_message(dup_message,addr)
+        else: # 주인이 아닌 경우, 주인에게 전송해 준다.
+            logging.info("insert in other table")
+            msg = {
+                'type': 'insert',
+                'uuid': self.uuid,
+                'key': key_val,
+                'value': value
+            }
+            try:
+                addr = self._context.peer_index[idx] # 다른 주인
+                self.send_message(msg,addr) 
+            except:
+                logging.info("But there was no one who deserve it.. so I save this record...")
+                self.key_insertion(key_val,value)#주인이 없을 경우 걍 내거에 저장. 그리고 broadcast
+                logging.info("This record is for free. get this one!")
+                broad_cast_addr = (network.NETWORK_BROADCAST_ADDR,network.NETWORK_PORT)
+                self.send_message(msg,broad_cast_addr)
+        pass
     def key_insertion(self,key,value):
         hashval = hashfunc(key)
         try :
@@ -76,6 +119,8 @@ class DHT(network.Network, timer.Timer): #상속 받음
         index = 0
         self._context.peer_count = 1
         self._context.peer_index = {} #마스터도 가지고 있자.
+        #timeout job 활성화 
+
         for (uuid, addr) in self._context.peer_list: #피어 하나하나에게 보내는 메시지 
             self._context.heartbeat_timer[uuid] = \
                 self.async_trigger(lambda: self.master_heartbeat_timeout(uuid), _LONG / 2) #타이머 설정
@@ -139,8 +184,39 @@ class DHT(network.Network, timer.Timer): #상속 받음
                 self._context.master_addr = addr
                 self._context.peer_count = int(message["peer_count"])
                 self._context.master_timestamp = message["timestamp"]
+                #리더가 선출되었다면, 그에게 가지고 있는 모든 정보를 줍니다.
+                msg = {
+                    "type":'gather_info',
+                    "uuid":self.uuid,
+                    "table": self.table
+                }
+                self.send_message(msg,addr)
                 asyncio.ensure_future(self.slave(), loop=self._loop)
                 pass
+        elif message["type"] == "gather_info":
+            if (self._state==self.State.MASTER and self._context.gather_state):#오직 마스터만이 이 작업을 수행합니다.
+                #모든 레코드를 받습니다. timeout을 초기화합니다. 
+                self._context.master_table.append(message['table'])
+
+                self._context.master_timeout_job.cancel()
+                async def master_gather_timeout():
+                    self._context.gather_state = False
+                    #타임아웃이 발생하면 현재 모인 정보중 부족한 key-value쌍을 찾아서 redistribution합니다. 이때 duplicate method를 사용합니다.
+                    master_table = {}
+                    for hashtable in self._context.master_table:
+                        for hashval,key_value_dict in hashtable.items():
+                            for key,value in key_value_dict.items():
+                                try:
+                                    master_table[key][1]+=1
+                                except:
+                                    master_table[key] = [value,1]
+                    #3개 이하인 key-value pair의 경우, 프로토콜에 따라 distribution합니다.
+                    for key,value_ in master_table.items():
+                        if (value_[1] <= 3):
+                            self.insert_redistribution_msg(key,value_[0])
+
+                self._context.master_timeout_job = self.async_trigger(master_gather_timeout,_LONGLONG)
+
         elif message["type"] == "peer_list":
             if self._state == self.State.SLAVE:
                 if self._context.master_timestamp == message["timestamp"]:
@@ -308,6 +384,7 @@ class DHT(network.Network, timer.Timer): #상속 받음
 
             pass
         elif message['type'] =="CLI_response":
+
             logging.info("Client request: CLI_response")
             logging.info("uuid : {uuid}".format(uuid=message['uuid']))
             logging.info("peers : {peers}".format(peers=message['peers']))
@@ -346,7 +423,8 @@ class DHT(network.Network, timer.Timer): #상속 받음
         for (uuid, addr) in self._context.peer_list:
             if uuid == client_uuid:
                 client = (uuid, addr)
-        self._context.peer_list.remove(client)
+        self._context.peer_list.remove(client) # 클라이언트가 사라졌을 때
+        # 여기서 key redistribution을 합니다. 
         self.update_peer_list()
         self.master_peer_list_updated()
 
@@ -373,11 +451,15 @@ class DHT(network.Network, timer.Timer): #상속 받음
             #
             self.peer_count = 1
             self.my_idx = 0
+            self.master_timeout_job = None
         def cancel(self):
             if self.heartbeat_send_job is not None:
                 self.heartbeat_send_job.cancel()
+            if self.master_timeout_job is not None:
+                self.master_timeout_job.cancel()
             for (_, timer) in self.heartbeat_timer.items():
                 timer.cancel()
+
             pass
 
     class SlaveContext:
@@ -651,7 +733,7 @@ class DHT(network.Network, timer.Timer): #상속 받음
             pass
         elif (option_=='d'):
             #deletion broadcasting
-            key_val = input("type the key")
+            key_val = input("type the key \n")
             msg = {
                     'type':'delete',
                     'uuid':addr[0],
