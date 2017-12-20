@@ -136,11 +136,13 @@ class DHT(network.Network, timer.Timer): #상속 받음
             if self._state == self.State.SLAVE:
                 if self._context.master_timestamp == message["timestamp"]:
                     self._context.peer_index[message["peer_index"]] = (message["peer_uuid"], message["peer_addr"])
-
+                    if message["peer_uuid"]==self.uuid:
+                        self._context.my_idx = message["peer_index"]    
                     if (len(self._context.peer_index) + 1) == self._context.peer_count: 
                         self._context.peer_list = []
                         for i in range(1, self._context.peer_count):
                             self._context.peer_list.append(self._context.peer_index[i])
+
                         self.slave_peer_list_updated()
         elif message["type"] == "search":
             logging.info("Client request: search")
@@ -154,8 +156,12 @@ class DHT(network.Network, timer.Timer): #상속 받음
             value = message['value']
             hash_val = hashfunc(key_val)
             #get my index
-            idx = int(hash_val,16) % self._context.peer_count
-            my_idx = None
+            try:
+                idx = int(hash_val,16) % self._context.peer_count 
+            except:
+                idx = 0
+            my_idx = self.my_idx
+            
             if (idx == my_idx): # 내가 바로 주인인 경우
                 #내 테이블에 저장하고, 내 주변 테이블에 복제한다.
                 if (self.key_insertion(key_val,value)):
@@ -178,8 +184,16 @@ class DHT(network.Network, timer.Timer): #상속 받음
                     'key': key_val,
                     'value': value
                 }
-                addr = self._context.peer_index[idx]
-                self.send_message(msg,addr)
+                try:
+                    addr = self._context.peer_index[idx] # 다른 주인
+                    self.send_message(msg,addr) 
+                except:
+                    self.key_insertion(key_val,value)#주인이 없을 경우 걍 내거에 저장. 그리고 broadcast
+                    broad_cast_addr = (network.NETWORK_BROADCAST_ADDR,network.NETWORK_PORT)
+                    self.send_message(msg,broad_cast_addr)
+
+
+                
             ####################################
             pass
         elif message["type"] == "delete":
@@ -293,6 +307,7 @@ class DHT(network.Network, timer.Timer): #상속 받음
             self.peer_index = {}
             #
             self.peer_count = 1
+            self.my_idx = 0
         def cancel(self):
             if self.heartbeat_send_job is not None:
                 self.heartbeat_send_job.cancel()
@@ -311,6 +326,7 @@ class DHT(network.Network, timer.Timer): #상속 받음
             self.heartbeat_send_job = None
             self.heartbeat_timer = None
 
+            self.my_idx = 0
         def cancel(self):
             if self.heartbeat_send_job is not None:
                 self.heartbeat_send_job.cancel()
