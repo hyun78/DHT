@@ -161,6 +161,7 @@ class DHT(network.Network, timer.Timer): #상속 받음
                         "value": value
                     }
                     self.send_message(msg,addr)
+                    logging.info("Sent this info to {addr}".format(addr=addr))
                 else:
                     logging.info("I have no idea about key : {key_val}".format(key_val=key_val))
                     logging.info("What i know is {table}".format(table=self.table))
