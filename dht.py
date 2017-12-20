@@ -164,6 +164,7 @@ class DHT(network.Network, timer.Timer): #상속 받음
             
             if (idx == my_idx): # 내가 바로 주인인 경우
                 #내 테이블에 저장하고, 내 주변 테이블에 복제한다.
+                logging.info("insert in my table")
                 if (self.key_insertion(key_val,value)):
                     dup_message = {
                         'type' : 'duplication',
@@ -171,15 +172,17 @@ class DHT(network.Network, timer.Timer): #상속 받음
                         'key' : key_val,
                         'value': value
                     }
-                    neer_idx = (idx+1) % len(self._context.peer_index)
-                    addr = self._context.peer_index[neer_idx]
-                    self.send_message(dup_message,addr)
-                    neer_idx = (idx-1) % len(self._context.peer_index)
-                    addr = self._context.peer_index[neer_idx]
-                    self.send_message(dup_message,addr)
+                    if (self._context.peer_count != 0):
+                        neer_idx = (idx+1) % len(self._context.peer_index)
+                        addr = self._context.peer_index[neer_idx]
+                        self.send_message(dup_message,addr)
+                        neer_idx = (idx-1) % len(self._context.peer_index)
+                        addr = self._context.peer_index[neer_idx]
+                        self.send_message(dup_message,addr)
             else: # 주인이 아닌 경우, 주인에게 전송해 준다.
+                logging.info("insert in other table")
                 msg = {
-                    'type': 'insertion',
+                    'type': 'insert',
                     'uuid': self.uuid,
                     'key': key_val,
                     'value': value
@@ -188,7 +191,9 @@ class DHT(network.Network, timer.Timer): #상속 받음
                     addr = self._context.peer_index[idx] # 다른 주인
                     self.send_message(msg,addr) 
                 except:
+                    logging.info("But there was no one who deserve it.. so I save this record...")
                     self.key_insertion(key_val,value)#주인이 없을 경우 걍 내거에 저장. 그리고 broadcast
+                    logging.info("This record is for free. get this one!")
                     broad_cast_addr = (network.NETWORK_BROADCAST_ADDR,network.NETWORK_PORT)
                     self.send_message(msg,broad_cast_addr)
 
@@ -219,10 +224,9 @@ class DHT(network.Network, timer.Timer): #상속 받음
             if (self._state==0):
                 logging.info("Client request: CLI_hello_response")
                 logging.info("uuid : {uuid}".format(uuid=message['uuid']))
-                try:
-                    self._context.node_info.append(message['peer_index'])
-                except:
-                    pass
+                self._context.node_idx+=1
+                self._context.node_info.append({str(self._context.node_idx):(uuid,addr)})
+                
                 logging.info("Client request: end cli response")
                 #broad_cast_addr = (network.NETWORK_BROADCAST_ADDR,network.NETWORK_PORT)
             
@@ -448,6 +452,7 @@ class DHT(network.Network, timer.Timer): #상속 받음
     class CLI_Context:
         def __init__(self):
             self.node_info= []
+            self.node_idx = 0
             self.connected_nodeinfo = None
             self.cli_hello_job = None
             self.cli_timeout_job = None
@@ -459,6 +464,7 @@ class DHT(network.Network, timer.Timer): #상속 받음
                 self.cli_timeout_job.cancel()
             pass
     async def cli_start(self):
+        self._context.cancle()
         self._context = self.CLI_Context()
         self._state = 0
         async def cli_hello():
@@ -486,7 +492,7 @@ class DHT(network.Network, timer.Timer): #상속 받음
         logging.info("starting cli.........")
         print("Starting CLI ... ")
         while True:
-            print("v : view all nodes \n c : connect to nodes with index \n q: quit")
+            print("u : update node info \n v : view all nodes \n c : connect to nodes with index \n q: quit")
             option_ = input("type a message type \n")
             if (option_=='v'):
                 print("Available nodes")
@@ -518,12 +524,15 @@ class DHT(network.Network, timer.Timer): #상속 받음
                 print(addr)
                 print(msg)
                 break
+            elif (option_=='u'):
+                asyncio.ensure_future(self.cli_start(),loop=self._loop)
             elif (option_=='q'):
                 break
             else:
                 print("not implemented option")
         return 
     async def cli_connected_context(self,addr):
+        print("Connected to addr {addr} ".format(addr=addr))
         print("options \n i : insert \n s :search \n d : deletion \n ")
         option_= input("type option \n")
         if (option_=='i'):
@@ -565,4 +574,5 @@ class DHT(network.Network, timer.Timer): #상속 받음
             pass
         else:
             print("not implemented option")
+        asyncio.ensure_future(self.cli(),loop=self._loop)
 
