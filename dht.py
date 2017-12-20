@@ -561,9 +561,7 @@ class DHT(network.Network, timer.Timer): #상속 받음
             else:
                 print("not implemented option")
         return 
-    async def cli_search_timeout():
-            logging.info("Search timeout.. There maybe no key about that key")
-            asyncio.ensure_future(self.cli(),loop=self._loop)
+    
     async def cli_connected_context(self,addr):
         print("Connected to addr {addr} ".format(addr=addr))
         print("options \n i : insert \n s :search \n d : deletion \n ")
@@ -608,8 +606,12 @@ class DHT(network.Network, timer.Timer): #상속 받음
                 }
                 broad_cast_addr = (network.NETWORK_BROADCAST_ADDR,network.NETWORK_PORT)
                 self._context.search_status = True
-                self.send_message(msg,broad_cast_addr)
+                async def cli_search_timeout():
+                    logging.info("Search timeout.. There maybe no key about that key")
+                    asyncio.ensure_future(self.cli(),loop=self._loop)
                 self.cli_timeout_job = self.async_trigger(cli_search_timeout,_LONGLONG)
+                self.send_message(msg,broad_cast_addr)
+                
             pass
         elif (option_=='d'):
             pass
