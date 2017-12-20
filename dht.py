@@ -254,7 +254,13 @@ class DHT(network.Network, timer.Timer): #상속 받음
                     logging.info("Nothing happend")
             pass
         elif message["type"] == "CLI_delete_response":
-            if ()
+            if (self._state==self.State.CLI and self._context.del_status):
+                async def cli_deletion_timeout():
+                    logging.info("Deletion is done")
+                    self._context.del_status = False
+                    asyncio.ensure_future(self.cli(),loop=self._loop)
+                self.cli_timeout_job.cancel()
+                self.cli_timeout_job = self.async_trigger(cli_deletion_timeout,_LONGLONG) 
         elif message["type"] =="duplication":
             logging.info("Client request: duplication")
             #dup메시지의 경우 묻지도 따지지도 않고 그냥 저장한다
@@ -659,5 +665,5 @@ class DHT(network.Network, timer.Timer): #상속 받음
         else:
             print("not implemented option")
             asyncio.ensure_future(self.cli(),loop=self._loop)
-        
+
 
