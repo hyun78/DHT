@@ -471,6 +471,7 @@ class DHT(network.Network, timer.Timer): #상속 받음
             self.my_idx = 0
             self.master_timeout_job = None
             self.gather_state = False
+            self.master_table = []
         def cancel(self):
             if self.heartbeat_send_job is not None:
                 self.heartbeat_send_job.cancel()
@@ -478,7 +479,6 @@ class DHT(network.Network, timer.Timer): #상속 받음
                 self.master_timeout_job.cancel()
             for (_, timer) in self.heartbeat_timer.items():
                 timer.cancel()
-
             pass
 
     class SlaveContext:
